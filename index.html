@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis Core Terminal</title>
+    <style>
+        body { background-color: #050505; color: #00ff66; font-family: monospace; padding: 25px; text-align: center; }
+        h2 { text-shadow: 0 0 8px #00ff66; letter-spacing: 2px; }
+        input, textarea { width: 100%; max-width: 320px; padding: 12px; margin: 10px 0; background: #111; border: 1px solid #00ff66; color: #fff; border-radius: 4px; box-sizing: border-box; font-family: monospace; }
+        
+        /* 2D Elastic Push Button Animation */
+        .glow-btn { background-color: transparent; color: #00ff66; border: 2px solid #00ff66; padding: 15px 30px; font-size: 16px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: transform 0.1s ease, background-color 0.1s; width: 100%; max-width: 320px; text-shadow: 0 0 5px #00ff66; box-shadow: 0 0 10px rgba(0, 255, 102, 0.2); }
+        .glow-btn:active { transform: scale(0.92); background-color: rgba(0, 255, 102, 0.1); }
+
+        /* History Logs Window */
+        .history-box { background: #111; border: 1px dashed #00ff66; border-radius: 4px; max-width: 320px; margin: 20px auto; padding: 15px; text-align: left; max-height: 150px; overflow-y: auto; }
+        .history-item { font-size: 12px; color: #a1a1a1; border-bottom: 1px solid #222; padding: 5px 0; }
+    </style>
+</head>
+<body>
+
+    <h2>[ JARVIS UPLINK ]</h2>
+    <p style="font-size:12px; color:#888;">Secure matrix node active via permanent cloud database.</p>
+    
+    <input type="text" id="username" placeholder="ENTER HANDLE / ID">
+    <textarea id="message" rows="3" placeholder="TYPE PAYLOAD MESSAGE..."></textarea>
+    <br>
+    <button class="glow-btn" onclick="sendDataStream()">EXECUTE BROADCAST</button>
+    
+    <div style="margin-top:20px; font-size:12px; color:#888; text-align:left; max-width:320px; margin-left:auto; margin-right:auto;">Your Personal Transmission History:</div>
+    <div class="history-box" id="logBox">
+        <div style="color:#444; font-size:12px;">Local log memory empty.</div>
+    </div>
+
+    <script>
+        window.onload = function() { displayLogs(); };
+
+        function sendDataStream() {
+            const user = document.getElementById('username').value.trim() || "Anonymous";
+            const text = document.getElementById('message').value.trim();
+            if (!text) { alert("Cannot broadcast empty signal stream."); return; }
+
+            // Pointing directly to your verified permanent JSONBin account data bucket
+            const permanentDatabase = "https://jsonbin.io";
+
+            // Fetch the existing data matrix arrays, append the new payload, and commit it back
+            fetch(permanentDatabase + "/latest", {
+                headers: { "X-Bin-Meta": "false" }
+            })
+            .then(res => res.json().catch(() => []))
+            .then(currentLogs => {
+                // Ensure structural integrity if the bin initialized weirdly
+                if (!Array.isArray(currentLogs)) currentLogs = [];
+
+                const newPayload = { name: user, msg: text, time: new Date().toLocaleTimeString() };
+                currentLogs.unshift(newPayload);
+
+                return fetch(permanentDatabase, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentLogs)
+                });
+            })
+            .then(res => {
+                if(res.ok) {
+                    // Cache item details locally on the user's interface logs view screen
+                    let entries = JSON.parse(localStorage.getItem('jarvis_cache')) || [];
+                    entries.unshift({ msgContent: text, timeStamp: new Date().toLocaleTimeString() });
+                    localStorage.setItem('jarvis_cache', JSON.stringify(entries));
+                    
+                    document.getElementById('message').value = "";
+                    displayLogs();
+                } else {
+                    alert("Uplink rejected. Cloud bucket access configuration error.");
+                }
+            })
+            .catch(err => {
+                alert("Uplink dropped. Target cloud server channel completely unreachable.");
+            });
+        }
+
+        function displayLogs() {
+            const box = document.getElementById('logBox');
+            let entries = JSON.parse(localStorage.getItem('jarvis_cache')) || [];
+            if(entries.length === 0) return;
+            
+            box.innerHTML = "";
+            entries.forEach(e => {
+                box.innerHTML += `<div class="history-item"><span style="color:#00ff66">[${e.timeStamp}]</span> ${e.msgContent}</div>`;
+            });
+        }
+    </script>
+</body>
+</html>
